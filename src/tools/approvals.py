@@ -62,10 +62,10 @@ async def get_approval(ctx: RunContext[Deps], approval_id: str) -> ToolReturn:
     )
 
 
-add_approval_tool = Tool(add_approval, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-update_approval_tool = Tool(update_approval, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-delete_approval_tool = Tool(delete_approval, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-get_approval_tool = Tool(get_approval, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
+add_approval_tool = Tool(add_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
+update_approval_tool = Tool(update_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
+delete_approval_tool = Tool(delete_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
+get_approval_tool = Tool(get_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
 
 
 approvals_toolset = FunctionToolset(tools=[add_approval_tool, update_approval_tool, delete_approval_tool, get_approval_tool])
