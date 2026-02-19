@@ -1,12 +1,12 @@
 import json
 
-from pydantic_ai import FunctionToolset, ToolReturn, RunContext, Tool, ModelRetry
+from pydantic_ai import ToolReturn, RunContext, ModelRetry
 
 from src.enums import AgentModes
 from src.deps import Deps
 from src.schemas import Approval, ApprovalCreate, ApprovalUpdate, ApprovalDelete
 
-from .utils import prepare_only_if_agent_mode
+from .utils import create_toolset_for_agent_mode
 
 
 async def add_approval(ctx: RunContext[Deps], approval: ApprovalCreate) -> ToolReturn:
@@ -62,10 +62,8 @@ async def get_approval(ctx: RunContext[Deps], approval_id: str) -> ToolReturn:
     )
 
 
-add_approval_tool = Tool(add_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
-update_approval_tool = Tool(update_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
-delete_approval_tool = Tool(delete_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
-get_approval_tool = Tool(get_approval, prepare=prepare_only_if_agent_mode(AgentModes.APPROVALS), max_retries=5)
-
-
-approvals_toolset = FunctionToolset(tools=[add_approval_tool, update_approval_tool, delete_approval_tool, get_approval_tool])
+approvals_toolset = create_toolset_for_agent_mode(
+    agent_mode=AgentModes.APPROVALS,
+    tools=[add_approval, update_approval, delete_approval, get_approval],
+    tool_kwargs={"max_retries": 5},
+)

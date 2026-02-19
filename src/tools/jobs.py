@@ -1,12 +1,12 @@
 import json
 
-from pydantic_ai import FunctionToolset, ToolReturn, RunContext, Tool, ModelRetry
+from pydantic_ai import ToolReturn, RunContext, ModelRetry
 
 from src.enums import AgentModes
 from src.deps import Deps
 from src.schemas import JobCreate, JobUpdate, JobDelete, Job
 
-from .utils import prepare_only_if_agent_mode
+from .utils import create_toolset_for_agent_mode
 
 
 async def add_job(ctx: RunContext[Deps], job: JobCreate) -> ToolReturn:
@@ -62,10 +62,8 @@ async def get_job(ctx: RunContext[Deps], job_id: str) -> ToolReturn:
     )
 
 
-add_job_tool = Tool(add_job, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-update_job_tool = Tool(update_job, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-delete_job_tool = Tool(delete_job, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-get_job_tool = Tool(get_job, prepare=prepare_only_if_agent_mode(AgentModes.JOBS), max_retries=5)
-
-
-jobs_toolset = FunctionToolset(tools=[add_job_tool, update_job_tool, delete_job_tool, get_job_tool])
+jobs_toolset = create_toolset_for_agent_mode(
+    agent_mode=AgentModes.JOBS,
+    tools=[add_job, update_job, delete_job, get_job],
+    tool_kwargs={"max_retries": 5},
+)
