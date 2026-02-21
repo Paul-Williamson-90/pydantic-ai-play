@@ -2,9 +2,9 @@ import asyncio
 
 from pydantic_ai import Agent, ModelMessage
 
-from src.core import create_core_agent
-from src.deps import Deps
-from src.enums import AgentModes
+from .core import create_core_agent
+from .deps import Deps
+from .enums import AgentModes
 
 
 async def conversation_loop(agent: Agent, deps: Deps, chat_history: list[ModelMessage]):
