@@ -2,12 +2,14 @@ import asyncio
 
 from pydantic_ai import Agent, ModelMessage
 
-from src.agent import create_agent
-from src.deps import Deps
+from .core import create_core_agent
+from .deps import Deps
+from .enums import AgentModes
 
 
 async def conversation_loop(agent: Agent, deps: Deps, chat_history: list[ModelMessage]):
     while True:
+        deps.agent_mode = AgentModes.ROUTER
         user_input = input("User: ")
         if user_input.lower() in ["exit", "quit"]:
             print("Exiting conversation.")
@@ -23,7 +25,7 @@ async def conversation_loop(agent: Agent, deps: Deps, chat_history: list[ModelMe
 
 
 def main():
-    agent = create_agent()
+    agent = create_core_agent()
     deps = Deps()
     chat_history: list[ModelMessage] = []
     asyncio.run(conversation_loop(agent, deps, chat_history))

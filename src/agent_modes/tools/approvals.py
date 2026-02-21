@@ -1,12 +1,9 @@
 import json
 
-from pydantic_ai import ToolReturn, RunContext, ModelRetry
+from pydantic_ai import ToolReturn, RunContext, ModelRetry, FunctionToolset, Tool
 
-from src.enums import AgentModes
-from src.deps import Deps
-from src.schemas import Approval, ApprovalCreate, ApprovalUpdate, ApprovalDelete
-
-from .utils import create_toolset_for_agent_mode
+from ..deps import Deps
+from ...schemas import Approval, ApprovalCreate, ApprovalUpdate, ApprovalDelete
 
 
 async def add_approval(ctx: RunContext[Deps], approval: ApprovalCreate) -> ToolReturn:
@@ -15,7 +12,6 @@ async def add_approval(ctx: RunContext[Deps], approval: ApprovalCreate) -> ToolR
         **approval.model_dump(),
     )
     ctx.deps.approvals.append(new_approval)
-    ctx.deps.event_history.append(f"Added approval with ID: {new_approval.id}")
     return ToolReturn(
         return_value="Created a new approval request for: " + new_approval.person,
         content=json.dumps(new_approval.model_dump(mode="json")),
@@ -30,7 +26,6 @@ async def update_approval(ctx: RunContext[Deps], approval: ApprovalUpdate) -> To
         return ModelRetry("Approval not found with ID: " + approval.id)
     for key, value in data.items():
         setattr(existing_approval, key, value)
-    ctx.deps.event_history.append(f"Updated approval with ID: {existing_approval.id}")
     return ToolReturn(
         return_value="Updated approval with ID: " + approval.id,
         content=json.dumps(existing_approval.model_dump(mode="json")),
@@ -43,7 +38,6 @@ async def delete_approval(ctx: RunContext[Deps], approval: ApprovalDelete) -> To
     if not existing_approval:
         return ModelRetry("Approval not found with ID: " + approval.id)
     ctx.deps.approvals.remove(existing_approval)
-    ctx.deps.event_history.append(f"Deleted approval with ID: {existing_approval.id}")
     return ToolReturn(
         return_value="Deleted approval with ID: " + approval.id,
         content=json.dumps(existing_approval.model_dump(mode="json")),
@@ -55,15 +49,18 @@ async def get_approval(ctx: RunContext[Deps], approval_id: str) -> ToolReturn:
     existing_approval = next((a for a in ctx.deps.approvals if a.id == approval_id), None)
     if not existing_approval:
         return ModelRetry("Approval not found with ID: " + approval_id)
-    ctx.deps.event_history.append(f"Retrieved approval with ID: {existing_approval.id}")
     return ToolReturn(
         return_value="Found approval with ID: " + approval_id,
         content=json.dumps(existing_approval.model_dump(mode="json")),
     )
-
-
-approvals_toolset = create_toolset_for_agent_mode(
-    agent_mode=AgentModes.APPROVALS,
-    tools=[add_approval, update_approval, delete_approval, get_approval],
-    tool_kwargs={"max_retries": 5},
-)
+    
+    
+def create_approvals_toolset(**tools_kwargs) -> FunctionToolset[Deps]:
+    return FunctionToolset(
+        tools=[
+            Tool(function=add_approval, name="add_approval", description="Add a new approval request", **tools_kwargs),
+            Tool(function=update_approval, name="update_approval", description="Update an existing approval request", **tools_kwargs),
+            Tool(function=delete_approval, name="delete_approval", description="Delete an existing approval request by ID", **tools_kwargs),
+            Tool(function=get_approval, name="get_approval", description="Get an existing approval request by ID", **tools_kwargs),
+        ],
+    )

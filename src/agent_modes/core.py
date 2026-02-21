@@ -1,25 +1,15 @@
-import os
-from dotenv import load_dotenv
+from typing import cast
 
 from pydantic_ai import Agent, RunContext, ModelMessage
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.settings import ModelSettings
 
 from .deps import Deps
-from .tools import router_toolset, jobs_toolset, approvals_toolset
-
-load_dotenv()
-
-
-def create_model() -> OpenAIChatModel:
-    return OpenAIChatModel(
-        model_name="gpt-5.2",
-        provider=OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY")),
-        settings=ModelSettings(
-            max_tokens=1000,
-        )
-    )
+from .tools import (
+    create_router_toolset,
+    create_approvals_toolset,
+    create_jobs_toolset,
+)
+from .enums import AgentModes
+from ..utils import model_factory
     
     
 def get_system_prompt() -> str:
@@ -40,20 +30,24 @@ def context_processor(
     return messages
 
 
-def create_agent() -> Agent[Deps]:
+def create_core_agent() -> Agent[Deps]:
     agent = Agent(
-        model=create_model(),
-        system_prompt=get_system_prompt(),
+        model=model_factory(),
+        instructions=get_system_prompt(),
         deps_type=Deps,
-        name="Agent",
+        name="Core Agent",
         history_processors=[
             context_processor
         ],
         retries=5,
         toolsets=[
-            router_toolset,
-            jobs_toolset,
-            approvals_toolset
+            create_router_toolset(max_retries=5),
+            create_jobs_toolset(max_retries=5).filtered(
+                filter_func=lambda ctx, _: cast(Deps, ctx.deps).agent_mode == AgentModes.JOBS
+            ),
+            create_approvals_toolset(max_retries=5).filtered(
+                filter_func=lambda ctx, _: cast(Deps, ctx.deps).agent_mode == AgentModes.APPROVALS
+            ),
         ],
     )
     return agent
