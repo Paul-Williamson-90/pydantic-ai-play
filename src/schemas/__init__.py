@@ -3,6 +3,7 @@ from .jobs import (
     JobCreate,
     JobUpdate,
     JobDelete,
+    JobStatus,
 )
 from .approvals import (
     Approval,
@@ -16,6 +17,7 @@ __all__ = [
     "JobCreate",
     "JobUpdate",
     "JobDelete",
+    "JobStatus",
     "Approval",
     "ApprovalCreate",
     "ApprovalUpdate",

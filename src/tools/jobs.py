@@ -1,12 +1,11 @@
+from datetime import datetime
 import json
 
-from pydantic_ai import ToolReturn, RunContext, ModelRetry
+from pydantic import BaseModel, Field
+from pydantic_ai import ToolReturn, RunContext, ModelRetry, FunctionToolset, Tool
 
-from src.enums import AgentModes
 from src.deps import Deps
-from src.schemas import JobCreate, JobUpdate, JobDelete, Job
-
-from .utils import create_toolset_for_agent_mode
+from src.schemas import JobCreate, JobUpdate, JobDelete, Job, JobStatus
 
 
 async def add_job(ctx: RunContext[Deps], job: JobCreate) -> ToolReturn:
@@ -60,10 +59,43 @@ async def get_job(ctx: RunContext[Deps], job_id: str) -> ToolReturn:
         return_value="Found job with ID: " + job_id,
         content=json.dumps(existing_job.model_dump(mode="json")),
     )
-
-
-jobs_toolset = create_toolset_for_agent_mode(
-    agent_mode=AgentModes.JOBS,
-    tools=[add_job, update_job, delete_job, get_job],
-    tool_kwargs={"max_retries": 5},
-)
+    
+    
+class ListFilter(BaseModel):
+    limit: int = Field(default=10, description="Maximum number of items to return")
+    offset: int = Field(default=0, description="Number of items to skip before starting to collect the result set")
+    gte_date: datetime | None = Field(default=None, description="Filter items with a date greater than or equal to this value")
+    lte_date: datetime | None = Field(default=None, description="Filter items with a date less than or equal to this value")
+    status: list[JobStatus] | None = Field(default=None, description="Filter items with a specific status")
+    
+    
+async def get_jobs(ctx: RunContext[Deps], filters: ListFilter) -> ToolReturn:
+    """Get all existing jobs from the list of jobs in the dependencies."""
+    if not ctx.deps.jobs:
+        return ToolReturn(
+            return_value="No jobs found",
+        )
+    ctx.deps.event_history.append("Retrieved all jobs")
+    jobs = ctx.deps.jobs
+    if filters.gte_date:
+        jobs = [job for job in jobs if job.deadline >= filters.gte_date]
+    if filters.lte_date:
+        jobs = [job for job in jobs if job.deadline <= filters.lte_date]
+    if filters.status:
+        jobs = [job for job in jobs if job.status in filters.status]
+    return ToolReturn(
+        return_value=f"Found {len(jobs)} jobs",
+        content=[job.model_dump(mode="json") for job in jobs],
+    )
+    
+    
+def create_jobs_toolset(**tools_kwargs) -> FunctionToolset[Deps]:
+    return FunctionToolset(
+        tools=[
+            Tool(function=add_job, name="add_job", description="Add a new job with a name and deadline", **tools_kwargs),
+            Tool(function=update_job, name="update_job", description="Update an existing job with new data", **tools_kwargs),
+            Tool(function=delete_job, name="delete_job", description="Delete an existing job by ID", **tools_kwargs),
+            Tool(function=get_job, name="get_job", description="Get an existing job by ID", **tools_kwargs),
+            Tool(function=get_jobs, name="get_jobs", description="Get all existing jobs with optional filters", **tools_kwargs),
+        ],
+    )
