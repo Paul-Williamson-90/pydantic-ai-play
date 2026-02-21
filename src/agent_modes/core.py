@@ -1,11 +1,6 @@
-import os
 from typing import cast
-from dotenv import load_dotenv
 
 from pydantic_ai import Agent, RunContext, ModelMessage
-from pydantic_ai.models import ModelSettings
-from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.models.openai import OpenAIChatModel
 
 from .deps import Deps
 from .tools import (
@@ -14,18 +9,7 @@ from .tools import (
     create_jobs_toolset,
 )
 from .enums import AgentModes
-
-load_dotenv()
-
-
-def create_model() -> OpenAIChatModel:
-    return OpenAIChatModel(
-        model_name="gpt-5.2",
-        provider=OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY")),
-        settings=ModelSettings(
-            max_tokens=1000,
-        )
-    )
+from ..utils import model_factory
     
     
 def get_system_prompt() -> str:
@@ -48,7 +32,7 @@ def context_processor(
 
 def create_core_agent() -> Agent[Deps]:
     agent = Agent(
-        model=create_model(),
+        model=model_factory(),
         instructions=get_system_prompt(),
         deps_type=Deps,
         name="Core Agent",

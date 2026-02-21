@@ -3,7 +3,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from src.utils import prefixed_uuid
+from ..utils import prefixed_uuid
 
 
 class JobStatus(str, Enum):
